@@ -96,12 +96,21 @@ func (b *builder) lookupInterruptID(name string, instr *ssa.CallCommon) (int64, 
 		return 0, b.makeError(instr.Pos(), "interrupt name lookup not available for this target")
 	}
 
-	upperName := strings.ToUpper(name)
+	searchName := normalizeInterruptName(name)
 	for key, id := range b.Interrupts {
-		if strings.ToUpper(key) == upperName {
+		if normalizeInterruptName(key) == searchName {
 			return int64(id), nil
 		}
 	}
 
 	return 0, b.makeError(instr.Pos(), "unknown interrupt name: "+name)
+}
+
+func normalizeInterruptName(name string) string {
+	upper := strings.ToUpper(name)
+	upper = strings.TrimPrefix(upper, "IRQ_")
+	upper = strings.TrimSuffix(upper, "_IRQ")
+	upper = strings.TrimPrefix(upper, "_")
+	upper = strings.TrimSuffix(upper, "_")
+	return upper
 }

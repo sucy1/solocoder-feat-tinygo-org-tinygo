@@ -8,7 +8,6 @@ package debug
 import (
 	"fmt"
 	"io"
-	"os"
 	"runtime"
 	"strconv"
 	"strings"
@@ -16,7 +15,9 @@ import (
 
 var Enabled = true
 
-var Output io.Writer = os.Stderr
+var Output io.Writer = defaultOutput()
+
+func Ready() bool
 
 // SetMaxStack sets the maximum amount of memory that can be used by a single
 // goroutine stack.
@@ -135,21 +136,21 @@ func (bi *BuildInfo) String() string {
 }
 
 func Print(v ...interface{}) {
-	if !Enabled {
+	if !Enabled || !Ready() {
 		return
 	}
 	fmt.Fprint(Output, v...)
 }
 
 func Println(v ...interface{}) {
-	if !Enabled {
+	if !Enabled || !Ready() {
 		return
 	}
 	fmt.Fprintln(Output, v...)
 }
 
 func Printf(format string, v ...interface{}) {
-	if !Enabled {
+	if !Enabled || !Ready() {
 		return
 	}
 	fmt.Fprintf(Output, format, v...)

@@ -1134,6 +1134,17 @@ func Build(pkgName, outpath, tmpdir string, config *compileopts.Config) (BuildRe
 					}
 					fmt.Println("Wrote size report to", filename)
 				}
+
+				if sizes.FlashSize > 0 && sizes.Flash() > sizes.FlashSize {
+					return fmt.Errorf("flash usage %d bytes exceeds limit %d bytes (%.1f%%)",
+						sizes.Flash(), sizes.FlashSize,
+						float64(sizes.Flash())/float64(sizes.FlashSize)*100)
+				}
+				if sizes.RAMSize > 0 && sizes.RAM() > sizes.RAMSize {
+					return fmt.Errorf("RAM usage %d bytes exceeds limit %d bytes (%.1f%%)",
+						sizes.RAM(), sizes.RAMSize,
+						float64(sizes.RAM())/float64(sizes.RAMSize)*100)
+				}
 			}
 
 			// Print goroutine stack sizes, as far as possible.
