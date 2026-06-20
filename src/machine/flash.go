@@ -28,6 +28,7 @@ func FlashDataEnd() uintptr {
 }
 
 var (
+	ErrMisalignedAddress       = errors.New("flash: misaligned address")
 	errFlashCannotErasePage     = errors.New("cannot erase flash page")
 	errFlashInvalidWriteLength  = errors.New("write flash data must align to correct number of bits")
 	errFlashNotAllowedWriteData = errors.New("not allowed to write flash data")
@@ -79,4 +80,31 @@ func flashPad(p []byte, writeBlockSize int) []byte {
 		}
 	}
 	return p
+}
+
+func Store(data []byte, addr int64) error {
+	eraseSize := Flash.EraseBlockSize()
+
+	if addr%eraseSize != 0 {
+		return ErrMisalignedAddress
+	}
+
+	if addr < 0 || addr+int64(len(data)) > Flash.Size() {
+		return errFlashCannotWritePastEOF
+	}
+
+	startBlock := addr / eraseSize
+	endAddr := addr + int64(len(data))
+	endBlock := (endAddr + eraseSize - 1) / eraseSize
+	numBlocks := endBlock - startBlock
+
+	if numBlocks > 0 {
+		err := Flash.EraseBlocks(startBlock, numBlocks)
+		if err != nil {
+			return err
+		}
+	}
+
+	_, err := Flash.WriteAt(data, addr)
+	return err
 }

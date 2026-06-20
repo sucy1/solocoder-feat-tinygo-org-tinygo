@@ -60,6 +60,7 @@ type Config struct {
 	Debug              bool // Whether to emit debug information in the LLVM module.
 	Nobounds           bool // Whether to skip bounds checks
 	PanicStrategy      string
+	Interrupts         map[string]int
 }
 
 // compilerContext contains function-independent data that should still be
@@ -2025,6 +2026,8 @@ func (b *builder) createFunctionCall(instr *ssa.CallCommon) (llvm.Value, error) 
 			}[b.Config.PanicStrategy]
 			return llvm.ConstInt(b.ctx.Int8Type(), panicStrategy, false), nil
 		case name == "runtime/interrupt.New":
+			return b.createInterruptGlobal(instr)
+		case name == "runtime/interrupt.NewByName":
 			return b.createInterruptGlobal(instr)
 		case name == "runtime.exportedFuncPtr":
 			_, ptr := b.getFunction(instr.Args[0].(*ssa.Function))

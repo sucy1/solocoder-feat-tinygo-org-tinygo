@@ -25,11 +25,14 @@ const sizesDebug = false
 
 // programSize contains size statistics per package of a compiled program.
 type programSize struct {
-	Packages map[string]*packageSize
-	Code     uint64
-	ROData   uint64
-	Data     uint64
-	BSS      uint64
+	Packages   map[string]*packageSize
+	Code       uint64
+	ROData     uint64
+	Data       uint64
+	BSS        uint64
+	FlashSize  uint64
+	RAMSize    uint64
+	StackSize  uint64
 }
 
 // sortedPackageNames returns the list of package names (ProgramSize.Packages)

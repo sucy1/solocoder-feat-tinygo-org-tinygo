@@ -70,8 +70,11 @@ type TargetSpec struct {
 	ProbeRSChip      string   `json:"probe-rs-chip,omitempty"`
 	CodeModel        string   `json:"code-model,omitempty"`
 	RelocationModel  string   `json:"relocation-model,omitempty"`
-	WITPackage       string   `json:"wit-package,omitempty"`
-	WITWorld         string   `json:"wit-world,omitempty"`
+	WITPackage       string         `json:"wit-package,omitempty"`
+	WITWorld         string         `json:"wit-world,omitempty"`
+	Interrupts       map[string]int `json:"interrupts,omitempty"`
+	FlashSize        uint64         `json:"flash-size,omitempty"`
+	RAMSize          uint64         `json:"ram-size,omitempty"`
 }
 
 // overrideProperties overrides all properties that are set in child into itself using reflection.
@@ -111,6 +114,15 @@ func (spec *TargetSpec) overrideProperties(child *TargetSpec) error {
 					if v == w {
 						return fmt.Errorf("duplicate value '%s' in field %s", v, field.Name)
 					}
+				}
+			}
+		case reflect.Map: // for maps, merge the child into parent, child takes priority
+			if !src.IsNil() {
+				if dst.IsNil() {
+					dst.Set(reflect.MakeMap(dst.Type()))
+				}
+				for _, key := range src.MapKeys() {
+					dst.SetMapIndex(key, src.MapIndex(key))
 				}
 			}
 		default:

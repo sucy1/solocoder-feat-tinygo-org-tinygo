@@ -21,6 +21,14 @@ type Interrupt struct {
 // function: closures are not supported.
 func New(id int, handler func(Interrupt)) Interrupt
 
+// NewByName creates a new Interrupt object by name. The name is case-insensitive
+// and should match the interrupt name in the chip datasheet. If the name does
+// not exist, it will be a compile-time error.
+//
+// This is a compiler intrinsic. You may call it only once, and must pass
+// constant parameters to it.
+func NewByName(name string, handler func(Interrupt)) Interrupt
+
 // handle is used internally, between IR generation and interrupt lowering. The
 // frontend will create runtime/interrupt.handle objects, cast them to an int,
 // and use that in an Interrupt object. That way the compiler will be able to

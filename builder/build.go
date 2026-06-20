@@ -217,6 +217,7 @@ func Build(pkgName, outpath, tmpdir string, config *compileopts.Config) (BuildRe
 		Debug:              !config.Options.SkipDWARF, // emit DWARF except when -internal-nodwarf is passed
 		Nobounds:           config.Options.Nobounds,
 		PanicStrategy:      config.PanicStrategy(),
+		Interrupts:         config.Target.Interrupts,
 	}
 
 	// Load the target machine, which is the LLVM object that contains all
@@ -1013,22 +1014,118 @@ func Build(pkgName, outpath, tmpdir string, config *compileopts.Config) (BuildRe
 				if err != nil {
 					return err
 				}
+				sizes.FlashSize = config.Target.FlashSize
+				sizes.RAMSize = config.Target.RAMSize
+				if stackPkg, ok := sizes.Packages["C stack"]; ok {
+					sizes.StackSize = stackPkg.BSS
+				}
 				switch config.Options.PrintSizes {
 				case "short":
 					fmt.Printf("   code    data     bss |   flash     ram\n")
 					fmt.Printf("%7d %7d %7d | %7d %7d\n", sizes.Code+sizes.ROData, sizes.Data, sizes.BSS, sizes.Flash(), sizes.RAM())
+					if sizes.FlashSize > 0 {
+						flashPercent := float64(sizes.Flash()) / float64(sizes.FlashSize) * 100
+						if flashPercent > 100 {
+							fmt.Printf("ERROR: flash usage %.1f%% exceeds limit %d bytes\n", flashPercent, sizes.FlashSize)
+						}
+					}
+					if sizes.RAMSize > 0 {
+						ramPercent := float64(sizes.RAM()) / float64(sizes.RAMSize) * 100
+						if ramPercent > 100 {
+							fmt.Printf("ERROR: RAM usage %.1f%% exceeds limit %d bytes\n", ramPercent, sizes.RAMSize)
+						}
+					}
 				case "full":
 					if !config.Debug() {
 						fmt.Println("warning: data incomplete, remove the -no-debug flag for more detail")
 					}
-					fmt.Printf("   code  rodata    data     bss |   flash     ram | package\n")
-					fmt.Printf("------------------------------- | --------------- | -------\n")
+					fmt.Printf("   code  rodata    data     bss |   flash     ram | flash%%   ram%% | package\n")
+					fmt.Printf("------------------------------- | --------------- | ------------- | -------\n")
 					for _, name := range sizes.sortedPackageNames() {
 						pkgSize := sizes.Packages[name]
-						fmt.Printf("%7d %7d %7d %7d | %7d %7d | %s\n", pkgSize.Code, pkgSize.ROData, pkgSize.Data, pkgSize.BSS, pkgSize.Flash(), pkgSize.RAM(), name)
+						var flashPctStr, ramPctStr string
+						if sizes.FlashSize > 0 {
+							flashPct := float64(pkgSize.Flash()) / float64(sizes.FlashSize) * 100
+							flashPctStr = fmt.Sprintf("%5.1f%%", flashPct)
+						} else {
+							flashPctStr = "     -"
+						}
+						if sizes.RAMSize > 0 {
+							ramPct := float64(pkgSize.RAM()) / float64(sizes.RAMSize) * 100
+							ramPctStr = fmt.Sprintf("%5.1f%%", ramPct)
+						} else {
+							ramPctStr = "     -"
+						}
+						fmt.Printf("%7d %7d %7d %7d | %7d %7d | %s %s | %s\n",
+							pkgSize.Code, pkgSize.ROData, pkgSize.Data, pkgSize.BSS,
+							pkgSize.Flash(), pkgSize.RAM(),
+							flashPctStr, ramPctStr, name)
 					}
-					fmt.Printf("------------------------------- | --------------- | -------\n")
-					fmt.Printf("%7d %7d %7d %7d | %7d %7d | total\n", sizes.Code, sizes.ROData, sizes.Data, sizes.BSS, sizes.Code+sizes.ROData+sizes.Data, sizes.Data+sizes.BSS)
+					fmt.Printf("------------------------------- | --------------- | ------------- | -------\n")
+					var flashPctStr, ramPctStr string
+					var flashStatus, ramStatus string
+					if sizes.FlashSize > 0 {
+						flashPct := float64(sizes.Flash()) / float64(sizes.FlashSize) * 100
+						flashPctStr = fmt.Sprintf("%5.1f%%", flashPct)
+						if flashPct > 100 {
+							flashStatus = " ERROR"
+						}
+					} else {
+						flashPctStr = "     -"
+					}
+					if sizes.RAMSize > 0 {
+						ramPct := float64(sizes.RAM()) / float64(sizes.RAMSize) * 100
+						ramPctStr = fmt.Sprintf("%5.1f%%", ramPct)
+						if ramPct > 100 {
+							ramStatus = " ERROR"
+						}
+					} else {
+						ramPctStr = "     -"
+					}
+					fmt.Printf("%7d %7d %7d %7d | %7d %7d | %s %s | total%s%s\n",
+						sizes.Code, sizes.ROData, sizes.Data, sizes.BSS,
+						sizes.Flash(), sizes.RAM(),
+						flashPctStr, ramPctStr,
+						flashStatus, ramStatus)
+
+					if sizes.FlashSize > 0 || sizes.RAMSize > 0 {
+						fmt.Println()
+						fmt.Println("Memory Summary:")
+						if sizes.FlashSize > 0 {
+							flashPct := float64(sizes.Flash()) / float64(sizes.FlashSize) * 100
+							barLen := 40
+							filled := int(float64(barLen) * flashPct / 100)
+							if filled > barLen {
+								filled = barLen
+							}
+							bar := strings.Repeat("█", filled) + strings.Repeat("░", barLen-filled)
+							status := ""
+							if flashPct > 100 {
+								status = " [ERROR: Overflow!]"
+							}
+							fmt.Printf("  Flash: %s  %d / %d bytes (%.1f%%)%s\n",
+								bar, sizes.Flash(), sizes.FlashSize, flashPct, status)
+						}
+						if sizes.RAMSize > 0 {
+							ramPct := float64(sizes.RAM()) / float64(sizes.RAMSize) * 100
+							barLen := 40
+							filled := int(float64(barLen) * ramPct / 100)
+							if filled > barLen {
+								filled = barLen
+							}
+							bar := strings.Repeat("█", filled) + strings.Repeat("░", barLen-filled)
+							status := ""
+							if ramPct > 100 {
+								status = " [ERROR: Overflow!]"
+							}
+							fmt.Printf("  RAM:   %s  %d / %d bytes (%.1f%%)%s\n",
+								bar, sizes.RAM(), sizes.RAMSize, ramPct, status)
+							if sizes.StackSize > 0 {
+								stackPct := float64(sizes.StackSize) / float64(sizes.RAMSize) * 100
+								fmt.Printf("  Stack: %d bytes (%.1f%% of RAM)\n", sizes.StackSize, stackPct)
+							}
+						}
+					}
 				case "html":
 					const filename = "size-report.html"
 					err := writeSizeReport(sizes, filename, pkgName)
