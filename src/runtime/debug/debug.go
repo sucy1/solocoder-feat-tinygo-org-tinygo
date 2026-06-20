@@ -17,8 +17,6 @@ var Enabled = true
 
 var Output io.Writer = defaultOutput()
 
-func Ready() bool
-
 // SetMaxStack sets the maximum amount of memory that can be used by a single
 // goroutine stack.
 //
