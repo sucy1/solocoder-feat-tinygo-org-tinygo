@@ -1,0 +1,19 @@
+{
+    "inherits": [
+        "cortex-m0plus"
+    ],
+    "build-tags": [
+        "stm32l031",
+        "stm32l0x1",
+        "stm32l0",
+        "stm32"
+    ],
+    "linkerscript": "targets/stm32l031x6.ld",
+    "extra-files": [
+        "src/device/stm32/stm32l0x1.s"
+    ],
+    "flash-method": "openocd",
+    "probe-rs-chip": "STM32L031G6Ux",
+    "openocd-interface": "cmsis-dap",
+    "openocd-target": "stm32l0"
+}

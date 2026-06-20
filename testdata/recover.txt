@@ -1,0 +1,55 @@
+# simple recover
+running panic...
+recovering...
+recovered: panic
+
+# recover with result
+running panic...
+recovered: panic
+result: 3
+
+# nested defer frame
+deferred nested function
+recovered: panic
+
+# nested panic: panic inside recover
+recovered 1: panic
+recovered 2: foo
+
+# panic inside defer
+recovered: panic
+
+# panic replace
+panic 1
+panic 2
+recovered: panic 2
+
+# defer panic
+defer panic
+recovered from deferred call: deferred panic
+
+# indirect recover
+indirect recover returned: indirect panic
+
+# runtime.Goexit
+Goexit deferred function, recover is nil: true
+
+# repanic
+inner, repanicking
+outer recovered: repanic value
+
+# recover runtime errors
+  recovered: index
+  recovered: index from helper
+  recovered: slice
+  recovered: type assert
+  recovered: empty interface type assert
+
+# recover from nil map and closed channel
+  recovered: nil map
+  recovered: closed chan
+  recovered: close nil chan
+
+# recover from hardware signals
+  recovered: divide by zero
+  recovered: nil pointer dereference
